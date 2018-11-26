@@ -27,13 +27,7 @@ echo <<<EOF
 EOF;
 ?>
       <style>
-	html, body {
-	  overflow-x: hidden;
-	}
-	.form-control {
-	  max-width: 95%;
-	}
-	.control {
+        .control {
           display: inline-block;
           margin: 0.4em;
           border: 1px solid #111;
@@ -80,102 +74,47 @@ EOF;
           content: "";
           display: block;
           clear: both;
-	}
-	.song {
-	  display: flex;
-	  border-bottom: 1px solid #222;
-	  margin-top: 5px;
-	  padding-bottom: 5px;
-	  overflow: hidden;
-	  max-width: 100vw;
-	}
-	.song div {
-	  margin-left: 1.2em;
-	  margin-top: 0.5em;
-	}
-	.song div > * {
-	  margin: 0;
-	}
+        }	
       </style>
 
       <script>
-      let API_KEY = 'AIzaSyAjsH3NhiqjpoyNjTLh8exVtEcHVuwVYKI';
-      async function get_video_data(ids) {
-	if (ids == null) {
-          return null;
-        }
-
-	let id_list = ids.join(',');
-
-        let res = await fetch(`https://content.googleapis.com/youtube/v3/videos?id=${id_list}&part=snippet&key=${API_KEY}`);
-        let json = await res.json();
-        let videos = json.items.map(
-          item => {
-	    return {
-	      author_name: item.snippet.channelTitle,
-	      author_url: `https://youtube.com/channel/${item.snippet.channelId}`,
-	      title: item.snippet.title,
-	      thumbnail: item.snippet.thumbnails.medium.url,
-              url: `https://youtu.be/${item.id}`
-            }
-          }
-	);
-	return videos;
-      }
-      async function update() {
+      function update() {
         console.log('updating...');
-        let status = await fetch('https://blacker.caltech.edu/nearer/process.php?status', {
+        fetch('https://blacker.caltech.edu/nearer/process.php?status', {
           credentials: 'include',
-	});
-	let data = await status.json()
-        
-	let song_div_inner = '';
+        }).then(res => res.json()).then(data => {
+          let song_div_inner = '';
+          data.songs.forEach((song) => {
+            let song_element = `<div class="media">
+              <div class="pull-left">
+                <img src="${song.thumbnail}" />
+              </div>
+              <h4>
+                <a href="${song.url}">${song.title}</a>
+              </h4>
+              <p>Uploaded by <a href="${song.author_url}">${song.author_name}</a></p>
+              <p>Added by ${song.added_by} on ${song.added_on}</p>
+              <p>${song.note}</p>
+            </div>`;
+            song_div_inner += song_element;
+          });
+	  document.getElementById('recently_added').innerHTML = song_div_inner;
 	  
-	let songs = [];
-	if (data.history) {
-	  let song_data = await get_video_data(data.history.map(x => x != null ? x.vid : null));
-	  songs = songs.concat(data.history.map((song, i) => song == null ? null : Object.assign({ note: song.note, added_by: song.user, added_on: song.time }, song_data[i])));
-	}
-	if (data.current) songs.push(data.current);
-	if (data.queue) {
-	  let song_data = await get_video_data(data.queue.map(x => x.vid));
-	  songs = songs.concat(data.queue.map((song, i) => song == null ? null : Object.assign({ note: song.note, added_by: song.user, added_on: song.time }, song_data[i])));
-        }
-	songs.reverse();
+          document.getElementById('client_status').innerHTML = data.client_connected ? `Client connected and ${data.status}` : `Client disconnected.`;
 
-	songs.forEach((song) => {
-	  if (song != null) {
-            let song_element = `<div class="song">
-              <div style="width: 30%"><img src="${song.thumbnail}" style="min-width: 100%; max-width: 100%;" /></div>
-                <div>
-                  <h4><a href="${song.url}">${song.title}</a></h4>
-                  <p>Uploaded by <a href="${song.author_url}">${song.author_name}</a></p>
-                  <p>Added by ${song.added_by} on ${song.added_on}</p>
-                  <p>${song.note}</p>
-                </div>
-              </div>`;
-	    song_div_inner += song_element;
-	  }
+	  if (data.current) {
+	      document.getElementById('playing_now').innerHTML = `\
+              <div class="pull-left">
+                <img src="${data.current.thumbnail}" />
+              </div>
+              <h4>
+                <a href="${data.current.url}">${data.current.title}</a>
+              </h4>
+	      <p>Uploaded by <a href="${data.current.author_url}">${data.current.author_name}</a></p>`;
+	  } else {
+              document.getElementById('playing_now').innerHTML = `<h3>No Song Playing.</h3>`;
+          }
         });
-	document.getElementById('recently_added').innerHTML = song_div_inner;
-	  
-        document.getElementById('client_status').innerHTML = data.client_connected ? `Client connected and ${data.status}` : `Client disconnected.`;
-
-	if (data.current) {
-	  let song = data.current;
-	  document.getElementById('playing_now').innerHTML = `\
-            <div class="song" style="border-bottom: none">
-              <div style="width: 30%"><img src="${song.thumbnail}" style="max-width: 100%;" /></div>
-                <div>
-                  <h4><a href="${song.url}">${song.title}</a></h4>
-                  <p>Uploaded by <a href="${song.author_url}">${song.author_name}</a></p>
-                  <p>Added by ${song.added_by} on ${song.added_on}</p>
-                  <p>${song.note}</p>
-                </div>
-              </div>`;
-	} else {
-            document.getElementById('playing_now').innerHTML = `<h3 style="text-align: center">No Song Playing.</h3>`;
-        }
       }
 
       function get_req(action) {      
@@ -256,7 +195,7 @@ EOF;
       </div>
       
       <h2>Playing Now</h2>
-      <div id="playing_now">
+      <div id="playing_now" class="media">
       
       </div>
 
