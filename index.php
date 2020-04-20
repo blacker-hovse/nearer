@@ -16,8 +16,9 @@ $subtitles = array(
   "Don't Play the Ride",
   'Play Loud, Play Proud',
   'The Day the Music Died',
-  'Better Than Ever Before!',
-  'New and Improved!'
+  'Better Than Ever Before',
+  'New and Improved!',
+  'Memers Will Be Shot'
 );
 
 $subtitle = $subtitles[mt_rand(0, count($subtitles) - 1)];
@@ -109,15 +110,17 @@ EOF;
 
         let res = await fetch(`https://content.googleapis.com/youtube/v3/videos?id=${id_list}&part=snippet&key=${API_KEY}`);
         let json = await res.json();
-        let videos = json.items.map(
+	console.log(json.items);
+	let videos = {};
+	json.items.forEach(
           item => {
-	    return {
+	    videos[item.id] = {
 	      author_name: item.snippet.channelTitle,
 	      author_url: `https://youtube.com/channel/${item.snippet.channelId}`,
 	      title: item.snippet.title,
 	      thumbnail: item.snippet.thumbnails.medium.url,
               url: `https://youtu.be/${item.id}`
-            }
+            };
           }
 	);
 	return videos;
@@ -127,34 +130,40 @@ EOF;
         let status = await fetch('https://blacker.caltech.edu/nearer/process.php?status', {
           credentials: 'include',
 	});
-	let data = await status.json()
+	let data = await status.json();
+	console.log(data);
         
 	let song_div_inner = '';
 	  
 	let songs = [];
 	if (data.history) {
 	  let song_data = await get_video_data(data.history.map(x => x != null ? x.vid : null));
-	  songs = songs.concat(data.history.map((song, i) => song == null ? null : Object.assign({ note: song.note, added_by: song.user, added_on: song.time }, song_data[i])));
+	  songs = songs.concat(data.history.map((song, i) => song == null ? null : Object.assign({ note: song.note, added_by: song.user, added_on: song.time }, song_data[song.vid])));
+	  songs.push('divider');
 	}
-	if (data.current) songs.push(data.current);
 	if (data.queue) {
-	  let song_data = await get_video_data(data.queue.map(x => x.vid));
-	  songs = songs.concat(data.queue.map((song, i) => song == null ? null : Object.assign({ note: song.note, added_by: song.user, added_on: song.time }, song_data[i])));
-        }
+	  let song_data = await get_video_data(data.queue.map(x => x != null ? x.vid : null));
+	  let new_songs = data.queue.map((song, i) => song == null ? null : Object.assign({ note: song.note, added_by: song.user, added_on: song.time }, song_data[song.vid]));
+	  new_songs.reverse();
+	  songs = songs.concat(new_songs);
+	}	
+	if (data.current) songs.push(data.current);
 	songs.reverse();
 
 	songs.forEach((song) => {
-	  if (song != null) {
+	  if (song != null && song !== 'divider') {
             let song_element = `<div class="song">
               <div style="width: 30%"><img src="${song.thumbnail}" style="min-width: 100%; max-width: 100%;" /></div>
                 <div>
                   <h4><a href="${song.url}">${song.title}</a></h4>
                   <p>Uploaded by <a href="${song.author_url}">${song.author_name}</a></p>
                   <p>Added by ${song.added_by} on ${song.added_on}</p>
-                  <p>${song.note}</p>
+                  <p>${song.note.replace('<', '&lt;')}</p>
                 </div>
               </div>`;
 	    song_div_inner += song_element;
+	  } else if (song != null) {
+            song_div_inner += '<h2 style="border-top:none">History</h2>';
 	  }
         });
 	document.getElementById('recently_added').innerHTML = song_div_inner;
@@ -260,7 +269,7 @@ EOF;
       
       </div>
 
-      <h2>Recently Added</h2>
+      <h2>Upcoming</h2>
       <div id="recently_added">
 
       </div>

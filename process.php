@@ -66,12 +66,12 @@ function add_vid_to_queue($data) {
 
 function queue_control($control) {
     switch ($control) {
-        case 'skip':
+	case 'skip':
         case 'pause':
         case 'resume':
             global $PYTHON_SERVER;
-
-            call_get_api($PYTHON_SERVER . $control);
+            file_put_contents('logs.txt', $control.$_SERVER['PHP_AUTH_USER'].PHP_EOL , FILE_APPEND | LOCK_EX);
+            call_get_api($PYTHON_SERVER . $control, array("user" => $_SERVER['PHP_AUTH_USER']));
             return true;
         default:
             $code = 400;
